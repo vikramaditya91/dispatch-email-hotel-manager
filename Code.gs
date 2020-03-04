@@ -34,9 +34,9 @@ function sendProposalEmail(row_number)
   var checkout_date_raw = relevant_values[0][3];
   var pay_by_date_raw = relevant_values[0][4];
 
-  var checkin_date = format(checkin_date_raw, 'dd-MMM-yyyy');
-  var checkout_date = format(checkout_date_raw, 'dd-MMM-yyyy');
-  var pay_by_date = format(pay_by_date_raw, 'dd-MMM-yyyy')
+  var checkin_date = date_formatter(checkin_date_raw);
+  var checkout_date = date_formatter(checkout_date_raw);
+  var pay_by_date = date_formatter(pay_by_date_raw)
   
   var adults = relevant_values[0][5];
   var children = relevant_values[0][6];
@@ -68,46 +68,3 @@ function sendProposalEmail(row_number)
 }
 
 
-function validateEmail(email)
-{
-  //Validates the email with regex. Does not confirm whether the email really exists or not
-  //Returns true/false depending on validity
-  var re = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
-  return re.test(String(email).toLowerCase());
-}
-
-function validateDateAfterToday(date_range)
-{
-  //date_range should be the range of the cell where the date item is present
-  //Validates that the date is after today. Returns bool if the date is in the future
-  var now = new Date();
-  return (date_range.getValue() > now);
-}
-
-
-function validateFilledItems(row_number)
-{
-  //Validates the contents of the row. 
-  //If the contents of the row (email-address, checkin date and checkout date are valid, it returns true. false otherwise
-  var email = sheet.getRange(row_number, EmailColumn).getValue();  
-  if(validateEmail(email))
-  {
-    Logger.log("The email is valid");
-    checkinRange = sheet.getRange(row_number, CheckinDateColumn);  
-    checkoutRange = sheet.getRange(row_number, CheckoutDateColumn);  
-    
-    if((checkinRange.isBlank() == false) && (checkoutRange.isBlank() == false))
-    {
-      Logger.log("The checkin date is:" + checkinRange.getValue());
-      Logger.log("The checkout date is:" + checkoutRange.getValue());
-      if (checkoutRange.getValue().getTime() > checkinRange.getValue().getTime())
-      {
-        if((validateDateAfterToday(checkinRange)) && (validateDateAfterToday(checkoutRange)))
-        {
-          return true;
-        }
-      }
-    } 
-  }
-  return false
-}
