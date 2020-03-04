@@ -1,57 +1,111 @@
-function onEdit(e) {
-
+function sendEmailOnEdit(e) {
+  
   var range = e.range;
-  Logger.log("The modified range is " + range)
-  var modifiedColumn = range.getColumn()
-  var modifiedRow = range.getRow()
+  Logger.log("The modified range is " + range);
+  var modifiedColumn = range.getColumn();
+  var modifiedRow = range.getRow();
   Logger.log("The row " +  range.getRow() + " was modified on the column " + range.getColumn());
   Logger.log("The value set on the modified column was " + range.getValue());  
-  if(modifiedColumn == PartialConfirmationUserColumn)
+  if(range.getValue() == "1")
   {
-    Logger.log("The PartialConfirmationUerColumn was modified");
-    if(range.getValue() == "1")
+    if(validateFilledItems(modifiedRow))
     {
-      if(validateFilledItems(modifiedRow))
-         {
-         Logger.log("The values in the row are validated and ready to send email")
-         }    
-     }   
-   }
+      var now = new Date();
+      
+      //Send the proposal email
+      if(modifiedColumn == ProposalEmailColumn)
+      {
+        if(sheet.getRange(modifiedRow, ProposalEmailDateColumn).isBlank())
+        {
+          sendProposalEmail(modifiedRow)
+          // sheet.getRange(modifiedRow, NoPaymentEmailDateColumn).setValue(now)
+        }        
+      }    
+    }   
+  }
 }
+
+function sendProposalEmail(row_number)
+{
+  var relevant_values = sheet.getRange(row_number, 1, 1, 10).getValues();
+  var name = relevant_values[0][0];
+  var email = relevant_values[0][1];
+  var checkin_date_raw = relevant_values[0][2];
+  var checkout_date_raw = relevant_values[0][3];
+  var pay_by_date_raw = relevant_values[0][4];
+
+  var checkin_date = format(checkin_date_raw, 'dd-MMM-yyyy');
+  var checkout_date = format(checkout_date_raw, 'dd-MMM-yyyy');
+  var pay_by_date = format(pay_by_date_raw, 'dd-MMM-yyyy')
+  
+  var adults = relevant_values[0][5];
+  var children = relevant_values[0][6];
+  var first_payment_amount = relevant_values[0][7];
+  var second_payment_amount = relevant_values[0][8];
+  var total_payment_amount = relevant_values[0][9];
+  
+  
+  if(name!="")
+  {
+    var salutation = "Hi " + name;
+  }
+  else
+  {
+    var salutation = "";
+  }
+  
+  var html = HtmlService.createTemplateFromFile('sendProposal');
+  html.data = [salutation, checkin_date, checkout_date, pay_by_date, adults, children, first_payment_amount, second_payment_amount, total_payment_amount] ;
+  var template = html.evaluate().getContent();
+  
+  MailApp.sendEmail({
+    to: email,
+    subject: 'Your reservation request at Villa Casuarina',
+    htmlBody: template,
+    replyTo:'ashoksvilla@gmail.com',
+    name: "Villa Casuarina"
+  }); 
+}
+
 
 function validateEmail(email)
 {
   //Validates the email with regex. Does not confirm whether the email really exists or not
   //Returns true/false depending on validity
   var re = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
-  return re.test(String(email).toLowerCase()) 
+  return re.test(String(email).toLowerCase());
 }
 
 function validateDateAfterToday(date_range)
 {
+  //date_range should be the range of the cell where the date item is present
   //Validates that the date is after today. Returns bool if the date is in the future
   var now = new Date();
-  return (date_range.getValue() > now) 
+  return (date_range.getValue() > now);
 }
 
 
 function validateFilledItems(row_number)
 {
-  //Validates the contents of the row. If the contents of the row (email-address, checkin date and checkout date are valid, it returns true. false otherwise
+  //Validates the contents of the row. 
+  //If the contents of the row (email-address, checkin date and checkout date are valid, it returns true. false otherwise
   var email = sheet.getRange(row_number, EmailColumn).getValue();  
   if(validateEmail(email))
   {
-    Logger.log("The email is valid")
+    Logger.log("The email is valid");
     checkinRange = sheet.getRange(row_number, CheckinDateColumn);  
     checkoutRange = sheet.getRange(row_number, CheckoutDateColumn);  
-
+    
     if((checkinRange.isBlank() == false) && (checkoutRange.isBlank() == false))
     {
-      Logger.log("The checkin date is:" + checkinRange.getValue())
-      Logger.log("The checkout date is:" + checkoutRange.getValue())
-      if((validateDateAfterToday(checkinRange)) && (validateDateAfterToday(checkoutRange)))
+      Logger.log("The checkin date is:" + checkinRange.getValue());
+      Logger.log("The checkout date is:" + checkoutRange.getValue());
+      if (checkoutRange.getValue().getTime() > checkinRange.getValue().getTime())
       {
-        return true
+        if((validateDateAfterToday(checkinRange)) && (validateDateAfterToday(checkoutRange)))
+        {
+          return true;
+        }
       }
     } 
   }
